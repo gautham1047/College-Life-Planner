@@ -4,9 +4,10 @@ import { AIChat } from "./AIChat";
 type LeftPanelProps = {
   showAIChat: boolean;
   onToggleAIChat: () => void;
+  onTaskAdd: () => void;
 };
 
-export const LeftPanel = ({ showAIChat, onToggleAIChat }: LeftPanelProps) => {
+export const LeftPanel = ({ showAIChat, onToggleAIChat, onTaskAdd }: LeftPanelProps) => {
   if (showAIChat) {
     return <AIChat isExpanded={showAIChat} onToggle={onToggleAIChat} />;
   }
@@ -22,7 +23,7 @@ export const LeftPanel = ({ showAIChat, onToggleAIChat }: LeftPanelProps) => {
         </p>
       </div>
 
-      <TaskInput />
+      <TaskInput onTaskAdd={onTaskAdd}/>
 
       <AIChat isExpanded={false} onToggle={onToggleAIChat} />
     </div>

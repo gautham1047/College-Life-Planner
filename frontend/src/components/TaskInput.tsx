@@ -15,17 +15,44 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { format } from "date-fns";
+import { setHours, setMinutes, setSeconds } from "date-fns";
 import { cn } from "@/lib/utils";
 
-export const TaskInput = () => {
+type TaskInputProps = {
+  onTaskAdd: () => void;
+};
+
+export const TaskInput = ({ onTaskAdd }: TaskInputProps) => {
   const [task, setTask] = useState("");
   const [date, setDate] = useState<Date>();
+  const [startTime, setStartTime] = useState<string | null>(null);
+  const [endTime, setEndTime] = useState<string | null>(null);
 
-  const handleSubmit = () => {
-    if (task.trim()) {
-      console.log("Adding task:", { task, date });
+  const handleSubmit = async () => {
+    if (!task.trim() || !date || !startTime || !endTime) {
+      // Maybe show an error to the user
+      return;
+    }
+    const [startHour, startMinute] = startTime.split(":").map(Number);
+    const [endHour, endMinute] = endTime.split(":").map(Number);
+    const start = setSeconds(setMinutes(setHours(date, startHour), startMinute), 0);
+    const end = setSeconds(setMinutes(setHours(date, endHour), endMinute), 0);
+
+    try {
+      await fetch("http://localhost:5000/events", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ title: task, start, end }),
+      });
       setTask("");
       setDate(undefined);
+      setStartTime("09:00");
+      setEndTime("10:00");
+      onTaskAdd(); // Notify parent component to refetch events
+    } catch (error) {
+      console.error("Failed to add task:", error);
     }
   };
 
@@ -43,13 +70,12 @@ export const TaskInput = () => {
         <PopoverTrigger asChild>
           <Button
             variant="outline"
-            className={cn(
-              "w-[140px] justify-start text-left font-normal",
-              !date && "text-muted-foreground"
-            )}
+            className={cn("w-[240px] justify-start text-left font-normal", !date && "text-muted-foreground")}
           >
             <Calendar className="mr-2 h-4 w-4" />
-            {date ? format(date, "MMM d") : "Pick date"}
+            {date
+              ? `${format(date, "MMM d, yyyy")} from ${startTime} to ${endTime}`
+              : "Pick date & time range"}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
@@ -60,6 +86,21 @@ export const TaskInput = () => {
             initialFocus
             className="pointer-events-auto"
           />
+          <div className="p-3 border-t border-border flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
+              <Input
+                type="time"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+              />
+              <span>-</span>
+              <Input
+                type="time"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+              />
+            </div>
+          </div>
         </PopoverContent>
       </Popover>
 
