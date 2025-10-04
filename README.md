@@ -1,39 +1,46 @@
-# Welcome to your Lovable project
+# Planner Sidekick AI
 
-## Project info
+## About The Project
 
-**URL**: https://lovable.dev/projects/9378ab0e-445d-434b-b1fc-b3e4c9d412ff
+This project is a personal calendar application, inspired by Google Calendar, but designed to be smarter, more intuitive, and free of frustrating quirks. It started from a simple annoyance: Google Calendar's habit of assuming an event ending after 9 PM should continue until 9 AM the next day. This project is about building a calendar that adapts to the user, not the other way around.
 
-## How can I edit this code?
+The core functionality allows users to add, manage, and group tasks and events. The real magic, however, will come from an integrated agentic AI chatbot built with LangChain. This AI assistant will help with complex scheduling and planning, turning a simple calendar into a true sidekick.
 
-There are several ways of editing your application.
+### Planned AI Features
 
-**Use Lovable**
+*   **Automated Schedule Population**: Feed the AI a syllabus or document, and it will automatically populate your calendar with important dates.
+*   **Intelligent Reminders**: Get reminders that only trigger when you're actually free, as the AI cross-checks your schedule to suggest the best times.
+*   **Collaborative Task Management**: Coordinate chores with roommates or tasks with a team, letting the AI handle fair division and scheduling.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/9378ab0e-445d-434b-b1fc-b3e4c9d412ff) and start prompting.
+## Built With
 
-Changes made via Lovable will be committed automatically to this repo.
+This project is built with a modern, full-stack architecture:
 
-**Use your preferred IDE**
+*   **Frontend**:
+    *   [React](https://reactjs.org/)
+    *   [Vite](https://vitejs.dev/)
+    *   [Tailwind CSS](https://tailwindcss.com/)
+    *   [shadcn-ui](https://ui.shadcn.com/)
+*   **Backend**:
+    *   [Express.js](https://expressjs.com/)
+    *   [MongoDB](https://www.mongodb.com/)
+*   **AI**:
+    *   [LangChain](https://www.langchain.com/)
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## Getting Started
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+To get a local copy up and running, follow these simple steps.
 
-Follow these steps:
+### Prerequisites
 
+You'll need [Node.js](https://nodejs.org/en/) and [npm](https://www.npmjs.com/) installed on your machine. Using [nvm](https://github.com/nvm-sh/nvm) is recommended to manage Node versions.
+
+### Installation
+
+1.  Clone the repository:
 ```sh
 # Step 1: Clone the repository using the project's Git URL.
 git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
 ```
 
 **Edit a file directly in GitHub**
@@ -59,15 +66,3 @@ This project is built with:
 - React
 - shadcn-ui
 - Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/9378ab0e-445d-434b-b1fc-b3e4c9d412ff) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)

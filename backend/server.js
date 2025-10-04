@@ -4,14 +4,33 @@ const cors = require("cors");
 require("dotenv").config();
 
 const Event = require("./models/Event");
+const Group = require("./models/Group");
 
 const app = express();
 app.use(express.json());
 app.use(cors());
 
+async function seedGroups() {
+  try {
+    const count = await Group.countDocuments();
+    if (count === 0) {
+      console.log("No groups found, seeding initial groups...");
+      const initialGroups = [
+        { name: "Personal", color: "bg-blue-500" },
+        { name: "Work", color: "bg-red-500" },
+        { name: "Study", color: "bg-green-500" },
+      ];
+      await Group.insertMany(initialGroups);
+      console.log("Groups seeded successfully.");
+    }
+  } catch (error) {
+    console.error("Error seeding groups:", error);
+  }
+}
+
 // connect to MongoDB
 mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log("Connected to MongoDB"))
+  .then(() => { console.log("Connected to MongoDB"); seedGroups(); })
   .catch(err => console.error("MongoDB connection error:", err));
 
 app.get("/", (req, res) => {
@@ -34,6 +53,16 @@ app.get("/events", async (req, res) => {
   try {
     const events = await Event.find();
     res.json(events);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get all groups
+app.get("/groups", async (req, res) => {
+  try {
+    const groups = await Group.find();
+    res.json(groups);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
