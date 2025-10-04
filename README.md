@@ -37,32 +37,49 @@ You'll need [Node.js](https://nodejs.org/en/) and [npm](https://www.npmjs.com/) 
 
 ### Installation
 
-1.  Clone the repository:
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-```
+1.  **Clone the repository**
+    ```sh
+    git clone https://github.com/your-username/planner-sidekick-ai.git
+    cd planner-sidekick-ai
+    ```
 
-**Edit a file directly in GitHub**
+2.  **Install Backend Dependencies**
+    ```sh
+    cd backend
+    npm install
+    ```
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+3.  **Install Frontend Dependencies**
+    ```sh
+    cd ../frontend
+    npm install
+    ```
 
-**Use GitHub Codespaces**
+4.  **Set Up Environment Variables**
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+    The backend requires a MongoDB connection string. Create a `.env` file in the `/backend` directory:
 
-## What technologies are used for this project?
+    ```sh
+    # /backend/.env
+    MONGODB_URI=----------
+    ```
 
-This project is built with:
+    > **Note**: The `.env` file is included in `.gitignore` to prevent your database credentials from being committed to version control.
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Running the Application
+
+You will need to run the frontend and backend servers in two separate terminals.
+
+1.  **Start the Backend Server**
+    ```sh
+    # From the /backend directory
+    npm run dev
+    ```
+    Your Express server should now be running, typically on `http://localhost:3000`.
+
+2.  **Start the Frontend Development Server**
+    ```sh
+    # From the /frontend directory
+    npm run dev
+    ```
+    Your React application will be available at `http://localhost:5173` (or another port if 5173 is in use).
