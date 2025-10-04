@@ -9,7 +9,6 @@ The core functionality allows users to add, manage, and group tasks and events. 
 ### Planned AI Features
 
 *   **Automated Schedule Population**: Feed the AI a syllabus or document, and it will automatically populate your calendar with important dates.
-*   **Intelligent Reminders**: Get reminders that only trigger when you're actually free, as the AI cross-checks your schedule to suggest the best times.
 *   **Collaborative Task Management**: Coordinate chores with roommates or tasks with a team, letting the AI handle fair division and scheduling.
 
 ## Built With
