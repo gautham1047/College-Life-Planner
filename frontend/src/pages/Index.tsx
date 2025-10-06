@@ -3,24 +3,43 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/componen
 import { LeftPanel } from "@/components/LeftPanel";
 import { CalendarView, CalendarEvent } from "@/components/CalendarView";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { RecurringEvent } from "@/types";
 
 const Index = () => {
   const [showAIChat, setShowAIChat] = useState(false);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [recurringEvents, setRecurringEvents] = useState<RecurringEvent[]>([]);
 
   const API_URL = "http://localhost:5000";
 
   const fetchEvents = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/events`);
-      const data = await response.json();
-      // Dates from JSON need to be converted back to Date objects
-      const formattedEvents = data.map((event: any) => ({
-        ...event,
-        start: new Date(event.start),
-        end: new Date(event.end),
-      }));
+      const [eventsResponse, recurringEventsResponse] = await Promise.all([
+        fetch(`${API_URL}/events`),
+        fetch(`${API_URL}/recurring-events`),
+      ]);
+
+      if (!eventsResponse.ok || !recurringEventsResponse.ok) {
+        throw new Error("Failed to fetch events");
+      }
+
+      const eventsData = await eventsResponse.json();
+      const recurringEventsData = await recurringEventsResponse.json();
+
+      const formattedEvents = eventsData.map((event: any) => {
+        // Dates from JSON need to be converted back to Date objects
+        if (event.start && event.end) {
+          return {
+            ...event,
+            start: new Date(event.start),
+            end: new Date(event.end),
+          };
+        }
+        return event;
+      });
+
       setEvents(formattedEvents);
+      setRecurringEvents(recurringEventsData);
     } catch (error) {
       console.error("Failed to fetch events", error);
     }
@@ -31,16 +50,42 @@ const Index = () => {
   }, [fetchEvents]);
 
   const handleDeleteEvent = async (eventId: string) => {
-    console.log
+    // This function now handles both single events and entire recurring series
+    const isRecurring = recurringEvents.some(re => re.id === eventId);
+    const endpoint = isRecurring ? `${API_URL}/recurring-events/${eventId}` : `${API_URL}/events/${eventId}`;
+
     try {
-      const response = await fetch(`${API_URL}/events/${eventId}`, {
+      const response = await fetch(endpoint, {
         method: "DELETE",
       });
       if (response.ok) {
-        setEvents((prevEvents) => prevEvents.filter((event) => event.id !== eventId));
+        if (isRecurring) {
+          setRecurringEvents((prev) => prev.filter((re) => re.id !== eventId));
+        } else {
+          setEvents((prev) => prev.filter((e) => e.id !== eventId));
+        }
+        // A full refetch might be simpler to ensure calendar is up-to-date
+        fetchEvents();
       }
     } catch (error) {
       console.error("Failed to delete event:", error);
+    }
+  };
+
+  const handleDeleteRecurringInstance = async (recurringEventId: string, date: Date) => {
+    try {
+      const response = await fetch(`${API_URL}/recurring-events/${recurringEventId}/exclude`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ date: date.toISOString() }),
+      });
+      if (response.ok) {
+        fetchEvents();
+      }
+    } catch (error) {
+      console.error("Failed to delete recurring instance:", error);
     }
   };
 
@@ -62,7 +107,12 @@ const Index = () => {
         <ResizableHandle withHandle className="bg-border hover:bg-primary/20 transition-colors" />
 
         <ResizablePanel defaultSize={60} minSize={40}>
-          <CalendarView events={events} onDeleteEvent={handleDeleteEvent} />
+          <CalendarView
+            events={events}
+            recurringEvents={recurringEvents}
+            onDeleteEvent={handleDeleteEvent}
+            onDeleteRecurringInstance={handleDeleteRecurringInstance}
+          />
         </ResizablePanel>
       </ResizablePanelGroup>
     </div>

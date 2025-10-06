@@ -1,20 +1,27 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { MenuBar, MenuBarItem } from "./MenuBar";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   format,
   addDays,
+  startOfDay,
+  endOfDay,
   startOfWeek,
+  endOfWeek,
   addWeeks,
   addMonths,
   startOfMonth,
+  endOfMonth,
   isSameDay,
   isSameMonth,
   getMinutes,
   getHours,
 } from "date-fns";
-import { CalendarEvent } from "./CalendarEvent";
+import { CalendarEvent as CalendarEventComponent } from "./CalendarEvent";
+import { RRule, RRuleSet } from "rrule";
+import { RecurringEvent } from "@/types";
+import { DeleteRecurringDialog } from "./DeleteRecurringDialog";
 
 const menuItems: MenuBarItem[] = [
   { id: "day", label: "Day" },
@@ -28,16 +35,78 @@ export type CalendarEvent = {
   start: Date;
   end: Date;
   color?: string;
+  isRecurring?: boolean;
+  recurringEventId?: string;
 };
 
 type CalendarViewProps = {
   events: CalendarEvent[];
+  recurringEvents: RecurringEvent[];
   onDeleteEvent: (eventId: string) => void;
+  onDeleteRecurringInstance: (eventId: string, date: Date) => void;
 };
 
-export const CalendarView = ({ events = [], onDeleteEvent }: CalendarViewProps) => {
+export const CalendarView = ({ events = [], recurringEvents = [], onDeleteEvent, onDeleteRecurringInstance }: CalendarViewProps) => {
   const [activeView, setActiveView] = useState("week");
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [deleteTarget, setDeleteTarget] = useState<CalendarEvent | null>(null);
+
+  const allEvents = useMemo(() => {
+    let startRange: Date;
+    let endRange: Date;
+
+    if (activeView === 'day') {
+      startRange = startOfDay(currentDate);
+      endRange = endOfDay(currentDate);
+    } else if (activeView === 'week') {
+      startRange = startOfWeek(currentDate, { weekStartsOn: 0 });
+      endRange = endOfWeek(currentDate, { weekStartsOn: 0 });
+    } else { // month
+      const monthStart = startOfMonth(currentDate);
+      startRange = startOfWeek(monthStart, { weekStartsOn: 0 });
+      // Month view shows 35 days (5 weeks)
+      endRange = endOfDay(addDays(startRange, 34));
+    }
+
+    const expandedRecurringEvents: CalendarEvent[] = recurringEvents.flatMap(re => {
+      // Ensure dtstart and until are Date objects
+      const { exdate: startExdates, ...rruleStartOptions } = {
+        ...re.rruleStart,
+        dtstart: new Date(re.rruleStart.dtstart),
+        until: re.rruleStart.until ? new Date(re.rruleStart.until) : null,
+      };
+      const { exdate: endExdates, ...rruleEndOptions } = {
+        ...re.rruleEnd,
+        dtstart: new Date(re.rruleEnd.dtstart),
+        until: re.rruleEnd.until ? new Date(re.rruleEnd.until) : null,
+      };
+
+      const startRuleSet = new RRuleSet();
+      const endRuleSet = new RRuleSet();
+
+      startRuleSet.rrule(new RRule(rruleStartOptions));
+      endRuleSet.rrule(new RRule(rruleEndOptions));
+
+      // Add exclusion dates to the rules
+      (re.rruleStart.exdate || []).forEach((d: string | Date) => startRuleSet.exdate(new Date(d)));
+      (re.rruleEnd.exdate || []).forEach((d: string | Date) => endRuleSet.exdate(new Date(d)));
+
+      const startDates = startRuleSet.between(startRange, endRange);
+      const endDates = endRuleSet.between(startRange, endRange);
+
+      return startDates.map((start, index) => ({
+        id: `${re.id}-${start.toISOString()}`, // Create a unique ID for each instance
+        title: re.title,
+        start: start,
+        end: endDates[index],
+        color: re.color,
+        isRecurring: true,
+        recurringEventId: re.id,
+      }));
+    });
+
+    return [...events, ...expandedRecurringEvents];
+  }, [activeView, currentDate, events, recurringEvents]);
 
   const handlePrevious = () => {
     if (activeView === "day") setCurrentDate(addDays(currentDate, -1));
@@ -51,8 +120,31 @@ export const CalendarView = ({ events = [], onDeleteEvent }: CalendarViewProps) 
     else if (activeView === "month") setCurrentDate(addMonths(currentDate, 1));
   };
 
+  const handleDeleteRequest = (event: CalendarEvent) => {
+    if (event.isRecurring) {
+      setDeleteTarget(event);
+    } else {
+      onDeleteEvent(event.id);
+    }
+  };
+
+  const handleDeleteInstance = () => {
+    if (deleteTarget) {
+      console.log("Deleting only this instance:", deleteTarget.id, deleteTarget.start);
+      onDeleteRecurringInstance(deleteTarget.recurringEventId!, deleteTarget.start);
+      setDeleteTarget(null);
+    }
+  };
+
+  const handleDeleteSeries = () => {
+    if (deleteTarget && deleteTarget.recurringEventId) {
+      onDeleteEvent(deleteTarget.recurringEventId);
+      setDeleteTarget(null);
+    }
+  };
+
   const renderDayView = () => {
-    const dayEvents = events.filter((event) => isSameDay(event.start, currentDate));
+    const dayEvents = allEvents.filter((event) => isSameDay(event.start, currentDate));
     const hours = Array.from({ length: 24 }, (_, i) => i);
     return (
       <div className="flex-1 overflow-auto relative">
@@ -71,10 +163,10 @@ export const CalendarView = ({ events = [], onDeleteEvent }: CalendarViewProps) 
             const height = (durationInMinutes / 60) * 4; // 4rem (h-16) per hour
 
             return (
-              <CalendarEvent
+              <CalendarEventComponent 
                 key={event.id}
                 event={event}
-                onDelete={onDeleteEvent}
+                onDelete={() => handleDeleteRequest(event)}
                 style={{ top: `${top}rem`, height: `${height}rem`, left: "calc(4rem + 1px)" }}
               />
             );
@@ -116,11 +208,11 @@ export const CalendarView = ({ events = [], onDeleteEvent }: CalendarViewProps) 
               {hours.map((hour) => (
                 <div key={hour} className="h-16 border-t" />
               ))}
-              {events.filter((event) => isSameDay(event.start, day)).map((event) => {
+              {allEvents.filter((event) => isSameDay(event.start, day)).map((event) => {
                 const top = (getHours(event.start) + getMinutes(event.start) / 60) * hourRowHeight;
                 const durationInMinutes = (event.end.getTime() - event.start.getTime()) / (1000 * 60);
                 const height = (durationInMinutes / 60) * hourRowHeight;
-                return <CalendarEvent key={event.id} event={event} onDelete={onDeleteEvent} style={{ top: `${top}rem`, height: `${height}rem`, left: '1px', right: '1px' }} />;
+                return <CalendarEventComponent key={event.id} event={event} onDelete={() => handleDeleteRequest(event)} style={{ top: `${top}rem`, height: `${height}rem`, left: '1px', right: '1px' }} />;
               })}
             </div>
           ))}
@@ -154,9 +246,9 @@ export const CalendarView = ({ events = [], onDeleteEvent }: CalendarViewProps) 
                 {format(day, "d")}
               </div>
               <div className="space-y-1 mt-1">
-                {events
+                {allEvents
                   .filter((event) => isSameDay(event.start, day))
-                  .slice(0, 2) // Show max 2 events
+                  .slice(0, 4) // Show max 4 events
                   .map((event) => (
                     <div key={event.id} className="text-xs bg-primary text-primary-foreground rounded px-1 truncate">
                       {event.title}
@@ -191,6 +283,13 @@ export const CalendarView = ({ events = [], onDeleteEvent }: CalendarViewProps) 
           <ChevronRight className="h-5 w-5" />
         </Button>
       </div>
+
+      <DeleteRecurringDialog
+        isOpen={!!deleteTarget}
+        onOpenChange={(isOpen) => !isOpen && setDeleteTarget(null)}
+        onDeleteInstance={handleDeleteInstance}
+        onDeleteSeries={handleDeleteSeries}
+      />
 
       {activeView === "day" && renderDayView()}
       {activeView === "week" && renderWeekView()}
