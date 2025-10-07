@@ -130,7 +130,6 @@ export const CalendarView = ({ events = [], recurringEvents = [], onDeleteEvent,
 
   const handleDeleteInstance = () => {
     if (deleteTarget) {
-      console.log("Deleting only this instance:", deleteTarget.id, deleteTarget.start);
       onDeleteRecurringInstance(deleteTarget.recurringEventId!, deleteTarget.start);
       setDeleteTarget(null);
     }

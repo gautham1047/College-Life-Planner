@@ -166,9 +166,10 @@ app.patch("/recurring-events/:id/exclude", async (req, res) => {
       return res.status(400).json({ error: "Date to exclude is required" });
     }
 
+    // The start date of the specific instance to exclude
     const excludeDateStart = new Date(date);
 
-    // Calculate the duration of the event to find the corresponding end date to exclude
+    // Calculate the duration of the event to find the corresponding end date to exclude.
     const dtStart = new Date(recurringEvent.rruleStart.dtstart);
     const dtEnd = new Date(recurringEvent.rruleEnd.dtstart);
     const duration = dtEnd.getTime() - dtStart.getTime();

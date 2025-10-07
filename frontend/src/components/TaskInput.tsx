@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Calendar as CalendarIcon, Plus, Trash2 } from "lucide-react";
+import { Calendar as CalendarIcon, Plus } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -20,9 +20,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { RRule } from "rrule";
-import { format } from "date-fns";
-import { setHours, setMinutes } from "date-fns";
+import { format, setHours, setMinutes, getHours, getMinutes } from "date-fns";
 import { GroupManagerDialog } from "./GroupManagerDialog";
 import { RecurringEventDialog, RecurrenceRuleOptions } from "./RecurringEventDialog";
 import { cn } from "@/lib/utils";
@@ -62,6 +60,16 @@ export const TaskInput = ({ onTaskAdd }: TaskInputProps) => {
     fetchGroups();
   }, [fetchGroups]);
 
+  const handleRecurrenceSave = (rule: RecurrenceRuleOptions | null, start?: Date, end?: Date) => {
+    setRecurrenceRule(rule);
+    if (rule && start && end) {
+      setStartDateTime(start);
+      setEndDateTime(end);
+    } else if (!rule) {
+      // Recurrence was cleared, but we keep the date/time
+    }
+  };
+
   const handleSubmit = async () => {
     if (!task.trim() || !startDateTime || !endDateTime) {
       // Maybe show an error to the user
@@ -71,15 +79,15 @@ export const TaskInput = ({ onTaskAdd }: TaskInputProps) => {
     const isRecurring = recurrenceRule !== null;
     const endpoint = isRecurring ? "http://localhost:5000/recurring-events" : "http://localhost:5000/events";
 
-    const startRuleOptions = isRecurring ? { ...recurrenceRule, dtstart: startDateTime } : undefined;
-    const endRuleOptions = isRecurring ? { ...recurrenceRule, dtstart: endDateTime } : undefined;
-
     const body = isRecurring
       ? {
           title: task,
           color: group ? groups.find((g) => g.name === group)?.color : "bg-primary",
-          rruleStart: startRuleOptions,
-          rruleEnd: endRuleOptions,
+          // The rruleStart object's dtstart should be the event's start time
+          rruleStart: { ...recurrenceRule, dtstart: startDateTime }, 
+          // The rruleEnd object's dtstart should be the event's end time.
+          // We can remove the original dtstart from the spread rule to be clean.
+          rruleEnd: { ...recurrenceRule, dtstart: endDateTime }, 
         }
       : {
           title: task,
@@ -125,6 +133,12 @@ export const TaskInput = ({ onTaskAdd }: TaskInputProps) => {
 
   const handleTimeChange = (time: string, type: 'start' | 'end') => {
     const [hour, minute] = time.split(':').map(Number);
+
+    // Add validation to prevent errors from invalid time input
+    if (isNaN(hour) || isNaN(minute)) {
+      return;
+    }
+
     if (type === 'start') {
       if (!startDateTime) return;
       const newStart = setMinutes(setHours(startDateTime, hour), minute);
@@ -191,7 +205,7 @@ export const TaskInput = ({ onTaskAdd }: TaskInputProps) => {
         <PopoverTrigger asChild>
           <Button
             variant="outline"
-            className={cn("w-[280px] justify-start text-left font-normal", !startDateTime && "text-muted-foreground")}
+            className={cn("w-[280px] justify-start text-left font-normal truncate", !startDateTime && "text-muted-foreground")}
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
             {startDateTime && endDateTime
@@ -263,8 +277,8 @@ export const TaskInput = ({ onTaskAdd }: TaskInputProps) => {
           </DropdownMenuSub>
           <DropdownMenuItem onSelect={() => setRecurrenceOpen(true)}>
             {recurrenceRule
-              ? "Update recurring schedule"
-              : "Make recurring"}
+              ? "Update Recurring Rule"
+              : "Make Recurring Rule"}
           </DropdownMenuItem>
           <DropdownMenuItem disabled>
             Add people to task (coming soon)
@@ -282,7 +296,7 @@ export const TaskInput = ({ onTaskAdd }: TaskInputProps) => {
       <RecurringEventDialog
         isOpen={isRecurrenceOpen}
         onOpenChange={setRecurrenceOpen}
-        onSave={setRecurrenceRule}
+        onSave={handleRecurrenceSave}
       />
 
       <GroupManagerDialog
