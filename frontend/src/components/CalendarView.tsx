@@ -1,5 +1,7 @@
 import { useState, useMemo } from "react";
+import { cn } from "@/lib/utils";
 import { MenuBar, MenuBarItem } from "./MenuBar";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -146,7 +148,7 @@ export const CalendarView = ({ events = [], recurringEvents = [], onDeleteEvent,
     const dayEvents = allEvents.filter((event) => isSameDay(event.start, currentDate));
     const hours = Array.from({ length: 24 }, (_, i) => i);
     return (
-      <div className="flex-1 overflow-auto relative">
+      <ScrollArea className="flex-1 relative">
         <div className="min-w-full relative">
           {hours.map((hour) => (
             <div key={hour} className="flex border-b h-16">
@@ -171,7 +173,7 @@ export const CalendarView = ({ events = [], recurringEvents = [], onDeleteEvent,
             );
           })}
         </div>
-      </div>
+      </ScrollArea>
     );
   };
 
@@ -183,12 +185,18 @@ export const CalendarView = ({ events = [], recurringEvents = [], onDeleteEvent,
     const hourRowHeight = 4; // in rem, from h-16
 
     return (
-      <div className="flex-1 overflow-auto relative">
+      <ScrollArea className="flex-1 relative">
         <div className="grid grid-cols-[4rem_repeat(7,1fr)]">
           {/* Header */}
           <div className="sticky top-0 z-10 bg-card" />
           {days.map((day) => (
-            <div key={day.toString()} className="p-2 text-center border-l sticky top-0 z-10 bg-card border-b">
+            <div
+              key={day.toString()}
+              className="p-2 text-center border-l sticky top-0 z-10 bg-card border-b hover:bg-accent/50 cursor-pointer transition-colors"
+              onClick={() => {
+                setActiveView("day");
+                setCurrentDate(day);
+              }}>
               <div className="font-medium ">{format(day, "EEE")}</div>
               <div className="text-sm text-muted-foreground">{format(day, "d")}</div>
             </div>
@@ -216,7 +224,7 @@ export const CalendarView = ({ events = [], recurringEvents = [], onDeleteEvent,
             </div>
           ))}
         </div>
-      </div>
+      </ScrollArea>
     );
   };
 
@@ -238,6 +246,10 @@ export const CalendarView = ({ events = [], recurringEvents = [], onDeleteEvent,
             <div
               key={idx}
               className="aspect-square p-2 hover:bg-accent/50 cursor-pointer transition-colors bg-card border-r border-b"
+              onClick={() => {
+                setActiveView("week");
+                setCurrentDate(day);
+              }}
             >
               <div className={`text-sm ${
                 day.getMonth() !== currentDate.getMonth() ? "text-muted-foreground" : ""
@@ -249,7 +261,10 @@ export const CalendarView = ({ events = [], recurringEvents = [], onDeleteEvent,
                   .filter((event) => isSameDay(event.start, day))
                   .slice(0, 4) // Show max 4 events
                   .map((event) => (
-                    <div key={event.id} className="text-xs bg-primary text-primary-foreground rounded px-1 truncate">
+                    <div
+                      key={event.id}
+                      className={cn("text-xs text-primary-foreground rounded px-1 truncate", event.color || "bg-primary")}
+                    >
                       {event.title}
                     </div>
                   ))}

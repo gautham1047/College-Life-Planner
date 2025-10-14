@@ -63,7 +63,7 @@ export const RecurringEventDialog = ({
   const [endCount, setEndCount] = useState<number>(1);
   const [endDate, setEndDate] = useState<Date>();
   const [error, setError] = useState<string | null>(null);
-  const [recurrenceStartDate, setRecurrenceStartDate] = useState<string>();
+  const [recurrenceStartDate, setRecurrenceStartDate] = useState<string>("");
   const [possibleStartDates, setPossibleStartDates] = useState<Date[]>([]);
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("10:00");
@@ -104,6 +104,7 @@ export const RecurringEventDialog = ({
     recurrenceStartDate,
     frequency,
     monthlyType,
+    weeklyDays,
     monthlyDay,
     endType,
     endCount,
@@ -137,7 +138,7 @@ export const RecurringEventDialog = ({
     } else {
       setPossibleStartDates([]);
     }
-    setRecurrenceStartDate(undefined); // Reset selection when rule changes
+    setRecurrenceStartDate(""); // Reset selection when rule changes
   }, [isRuleDefined, frequency, weeklyDays, monthlyType, monthlyDay, monthlyOrdinal, monthlyWeekday]);
 
   const handleSave = () => {
@@ -156,7 +157,7 @@ export const RecurringEventDialog = ({
     const [startHour, startMinute] = startTime.split(":").map(Number);
     const [endHour, endMinute] = endTime.split(":").map(Number);
 
-    const chosenStartDate = new Date(recurrenceStartDate!);
+    const chosenStartDate = new Date(recurrenceStartDate!.replace("Z", ""));
     const finalStartDateTime = setMinutes(setHours(chosenStartDate, startHour), startMinute);
     const finalEndDateTime = setMinutes(setHours(chosenStartDate, endHour), endMinute);
 
@@ -165,16 +166,21 @@ export const RecurringEventDialog = ({
       return;
     }
 
+    let finalCount = endType === "count" ? endCount : null;
+    if (frequency === "weekly" && endType === "count" && weeklyDays.length > 0) {
+      finalCount = endCount * weeklyDays.length;
+    }
+
     const rruleOptions: Partial<RRuleOptions> = {
       dtstart: finalStartDateTime,
       freq: frequency === "weekly" ? RRule.WEEKLY : RRule.MONTHLY,
       until: endType === "until" ? endDate : null,
-      count: endType === "count" ? endCount : null,
+      count: finalCount,
     };
 
     if (frequency === "weekly") {
       // Convert weekday strings ('SU', 'MO') to numbers (0, 1) for JSON serialization.
-      const dayMap: { [key: string]: number } = { SU: 0, MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6 };
+      const dayMap: { [key: string]: number } = { MO: 0, TU: 1, WE: 2, TH: 3, FR: 4, SA: 5, SU: 6 };
       rruleOptions.byweekday = weeklyDays.map(d => dayMap[d]);
 
     } else {
@@ -362,7 +368,7 @@ export const RecurringEventDialog = ({
                     className="w-20  [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     disabled={endType !== 'count'}
                   />
-                  {frequency === 'weekly' ? 'weeks' : 'months'}
+                  {frequency === 'weekly' ? (endCount === 1 ? 'week' : 'weeks') : (endCount === 1 ? 'month' : 'months')}
                 </Label>
               </div>
               <div className="flex items-center space-x-2">

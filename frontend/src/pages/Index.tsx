@@ -4,29 +4,22 @@ import { LeftPanel } from "@/components/LeftPanel";
 import { CalendarView, CalendarEvent } from "@/components/CalendarView";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { RecurringEvent } from "@/types";
+import { getEvents, deleteEvent } from "@/api/event";
+import { getRecurringEvents, deleteRecurringEvent, excludeRecurringInstance } from "@/api/recurringEvent";
 
 const Index = () => {
   const [showAIChat, setShowAIChat] = useState(false);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [recurringEvents, setRecurringEvents] = useState<RecurringEvent[]>([]);
 
-  const API_URL = "http://localhost:5000";
-
   const fetchEvents = useCallback(async () => {
     try {
       const [eventsResponse, recurringEventsResponse] = await Promise.all([
-        fetch(`${API_URL}/events`),
-        fetch(`${API_URL}/recurring-events`),
+        getEvents(),
+        getRecurringEvents(),
       ]);
 
-      if (!eventsResponse.ok || !recurringEventsResponse.ok) {
-        throw new Error("Failed to fetch events");
-      }
-
-      const eventsData = await eventsResponse.json();
-      const recurringEventsData = await recurringEventsResponse.json();
-
-      const formattedEvents = eventsData.map((event: any) => {
+      const formattedEvents = eventsResponse.map((event: any) => {
         // Dates from JSON need to be converted back to Date objects
         if (event.start && event.end) {
           return {
@@ -39,7 +32,7 @@ const Index = () => {
       });
 
       setEvents(formattedEvents);
-      setRecurringEvents(recurringEventsData);
+      setRecurringEvents(recurringEventsResponse);
     } catch (error) {
       console.error("Failed to fetch events", error);
     }
@@ -52,21 +45,15 @@ const Index = () => {
   const handleDeleteEvent = async (eventId: string) => {
     // This function now handles both single events and entire recurring series
     const isRecurring = recurringEvents.some(re => re.id === eventId);
-    const endpoint = isRecurring ? `${API_URL}/recurring-events/${eventId}` : `${API_URL}/events/${eventId}`;
 
     try {
-      const response = await fetch(endpoint, {
-        method: "DELETE",
-      });
-      if (response.ok) {
-        if (isRecurring) {
-          setRecurringEvents((prev) => prev.filter((re) => re.id !== eventId));
-        } else {
-          setEvents((prev) => prev.filter((e) => e.id !== eventId));
-        }
-        // A full refetch might be simpler to ensure calendar is up-to-date
-        fetchEvents();
+      if (isRecurring) {
+        await deleteRecurringEvent(eventId);
+      } else {
+        await deleteEvent(eventId);
       }
+      // A full refetch might be simpler to ensure calendar is up-to-date
+      fetchEvents();
     } catch (error) {
       console.error("Failed to delete event:", error);
     }
@@ -74,16 +61,8 @@ const Index = () => {
 
   const handleDeleteRecurringInstance = async (recurringEventId: string, date: Date) => {
     try {
-      const response = await fetch(`${API_URL}/recurring-events/${recurringEventId}/exclude`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ date: date.toISOString() }),
-      });
-      if (response.ok) {
-        fetchEvents();
-      }
+      await excludeRecurringInstance(recurringEventId, date);
+      fetchEvents();
     } catch (error) {
       console.error("Failed to delete recurring instance:", error);
     }

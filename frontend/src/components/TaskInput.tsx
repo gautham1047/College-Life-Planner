@@ -24,6 +24,9 @@ import { format, setHours, setMinutes, getHours, getMinutes } from "date-fns";
 import { GroupManagerDialog } from "./GroupManagerDialog";
 import { RecurringEventDialog, RecurrenceRuleOptions } from "./RecurringEventDialog";
 import { cn } from "@/lib/utils";
+import { createEvent } from "@/api/event";
+import { createRecurringEvent } from "@/api/recurringEvent";
+import { getGroups, addGroup, deleteGroup, updateGroup } from "@/api/group";
 
 type TaskInputProps = {
   onTaskAdd: () => void;
@@ -48,8 +51,7 @@ export const TaskInput = ({ onTaskAdd }: TaskInputProps) => {
 
   const fetchGroups = useCallback(async () => {
     try {
-      const response = await fetch("http://localhost:5000/groups");
-      const data = await response.json();
+      const data = await getGroups();
       setGroups(data);
     } catch (error) {
       console.error("Failed to fetch groups:", error);
@@ -77,7 +79,6 @@ export const TaskInput = ({ onTaskAdd }: TaskInputProps) => {
     }
 
     const isRecurring = recurrenceRule !== null;
-    const endpoint = isRecurring ? "http://localhost:5000/recurring-events" : "http://localhost:5000/events";
 
     const body = isRecurring
       ? {
@@ -97,13 +98,11 @@ export const TaskInput = ({ onTaskAdd }: TaskInputProps) => {
         };
 
     try {
-      await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      });
+      if (isRecurring) {
+        await createRecurringEvent(body);
+      } else {
+        await createEvent(body);
+      }
 
       setTask("");
       setStartDateTime(undefined);
@@ -156,11 +155,7 @@ export const TaskInput = ({ onTaskAdd }: TaskInputProps) => {
   const handleAddGroup = async (name: string, color: string) => {
     if (!name.trim()) return;
     try {
-      await fetch("http://localhost:5000/groups", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, color }),
-      });
+      await addGroup(name, color);
       fetchGroups();
     } catch (error) {
       console.error("Failed to add group:", error);
@@ -169,9 +164,7 @@ export const TaskInput = ({ onTaskAdd }: TaskInputProps) => {
 
   const handleDeleteGroup = async (groupId: string) => {
     try {
-      await fetch(`http://localhost:5000/groups/${groupId}`, {
-        method: "DELETE",
-      });
+      await deleteGroup(groupId);
       fetchGroups();
     } catch (error) {
       console.error("Failed to delete group:", error);
@@ -180,11 +173,7 @@ export const TaskInput = ({ onTaskAdd }: TaskInputProps) => {
 
   const handleUpdateGroup = async (groupId: string, name: string, color: string) => {
     try {
-      await fetch(`http://localhost:5000/groups/${groupId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, color }),
-      });
+      await updateGroup(groupId, name, color);
       fetchGroups();
     } catch (error) {
       console.error("Failed to update group:", error);
@@ -205,7 +194,7 @@ export const TaskInput = ({ onTaskAdd }: TaskInputProps) => {
         <PopoverTrigger asChild>
           <Button
             variant="outline"
-            className={cn("w-[280px] justify-start text-left font-normal truncate", !startDateTime && "text-muted-foreground")}
+            className={cn("w-[310px] justify-start text-left font-normal truncate", !startDateTime && "text-muted-foreground")}
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
             {startDateTime && endDateTime

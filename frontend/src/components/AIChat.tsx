@@ -1,8 +1,12 @@
 import { useState } from "react";
-import { MessageCircle, Home, Send } from "lucide-react";
+import { MessageCircle, Home, Send, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { postChatMessage } from "@/api/ai";
 
 type Message = {
   id: string;
@@ -24,26 +28,40 @@ export const AIChat = ({ isExpanded, onToggle }: AIChatProps) => {
     },
   ]);
   const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isAgentMode, setIsAgentMode] = useState(false);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (input.trim()) {
-      const newMessage: Message = {
+      const userMessage: Message = {
         id: Date.now().toString(),
         text: input,
         sender: "user",
       };
-      setMessages([...messages, newMessage]);
+      const newMessages = [...messages, userMessage];
+      setMessages(newMessages);
+      setIsLoading(true);
       setInput("");
 
-      // Simulate AI response
-      setTimeout(() => {
+      try {
+        const data = await postChatMessage(input, newMessages, isAgentMode);
         const aiResponse: Message = {
           id: (Date.now() + 1).toString(),
-          text: "I understand. Let me help you with that.",
+          text: data.text,
           sender: "ai",
         };
         setMessages((prev) => [...prev, aiResponse]);
-      }, 1000);
+      } catch (error) {
+        console.error("Failed to send message:", error);
+        const errorResponse: Message = {
+          id: (Date.now() + 1).toString(),
+          text: "Sorry, I couldn't connect to the AI. Please try again.",
+          sender: "ai",
+        };
+        setMessages((prev) => [...prev, errorResponse]);
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -61,11 +79,25 @@ export const AIChat = ({ isExpanded, onToggle }: AIChatProps) => {
 
   return (
     <div className="flex flex-col h-full bg-background">
-      <div className="p-4 border-b flex items-center justify-between bg-card">
-        <h2 className="text-xl font-semibold">AI Assistant</h2>
-        <Button variant="ghost" size="icon" onClick={onToggle}>
-          <Home className="h-5 w-5" />
-        </Button>
+      <div className="p-3 border-b flex items-center justify-between bg-card">
+        <div className="flex items-center gap-2">
+          <Bot className="h-6 w-6 text-primary" />
+          <h2 className="text-xl font-semibold">AI Assistant</h2>
+        </div>
+        <div className="flex items-center gap-4">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center space-x-2">
+                <Switch id="agent-mode" checked={isAgentMode} onCheckedChange={setIsAgentMode} />
+                <Label htmlFor="agent-mode" className="cursor-pointer">Agent Mode</Label>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent><p>Toggle to allow the AI to modify your calendar.</p></TooltipContent>
+          </Tooltip>
+          <Button variant="ghost" size="icon" onClick={onToggle}>
+            <Home className="h-5 w-5" />
+          </Button>
+        </div>
       </div>
 
       <ScrollArea className="flex-1 p-4">
@@ -88,6 +120,15 @@ export const AIChat = ({ isExpanded, onToggle }: AIChatProps) => {
               </div>
             </div>
           ))}
+          {isLoading && (
+            <div className="flex justify-start">
+              <div className="max-w-[80%] rounded-lg p-3 bg-muted">
+                <div className="flex items-center space-x-2">
+                  <span className="animate-pulse">...</span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </ScrollArea>
 
@@ -99,7 +140,7 @@ export const AIChat = ({ isExpanded, onToggle }: AIChatProps) => {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
           />
-          <Button onClick={handleSend} size="icon">
+          <Button onClick={handleSend} size="icon" disabled={isLoading}>
             <Send className="h-4 w-4" />
           </Button>
         </div>

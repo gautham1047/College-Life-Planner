@@ -26,5 +26,5 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src", "../backend/models/Group.js"]
+  "include": ["src", "../backend/models/Group.js", "../backend/chat.js"]
 }
