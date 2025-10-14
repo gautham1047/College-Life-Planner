@@ -36,7 +36,7 @@ const Index = () => {
     } catch (error) {
       console.error("Failed to fetch events", error);
     }
-  }, []);
+  }, []); 
 
   useEffect(() => {
     fetchEvents();
